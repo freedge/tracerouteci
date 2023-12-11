@@ -15,9 +15,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Network info
-      run: ip a && dpkg -l systemd && cat /etc/apt/sources.list
+      run: ip a && dpkg -l systemd
     - name: Install deps
-      run: sudo sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list && sudo apt-get build-dep traceroute
+      run: "sudo sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list && sudo apt-get build-dep traceroute"
     - name: Build
       run: curl -L https://downloads.sourceforge.net/project/traceroute/traceroute/$TRCVERSION/$TRCVERSION.tar.gz | tar -zxv -f - && cd $TRCVERSION && make
     - name: Test it maybe
