@@ -72,3 +72,4 @@ traceroute -T -O mss=12000,info 192.168.102.2 --port=12345 -n | tee res
 traceroute -T -O mss=12000,info fd00:3::2 --port=12346 --max-hops=5 -n  | tee -a res
 traceroute 192.168.102.2 --mtu -O info -n | tee -a res
 traceroute fd00:3::2 --mtu -O info -n | tee -a res
+sed -i 's/[0-9]*\.[0-9]* ms//g' res && diff expected res
