@@ -23,4 +23,4 @@ jobs:
     - name: Test it maybe
       run: sudo PATH=traceroute/:${PATH} bash test.sh
     - name: Report coverage
-      run: cd traceroute && (echo "```" && gcov -r mod-tcp.c ; echo "```") >> $GITHUB_STEP_SUMMARY
+      run: cd traceroute && (echo '```' && gcov -r mod-tcp.c ; echo '```') >> $GITHUB_STEP_SUMMARY
