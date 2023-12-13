@@ -19,8 +19,9 @@ ip netns add n1
 ip netns add n2
 ip netns add n3
 sysctl net.ipv6.conf.all.forwarding=1
-ip netns exec n1 sysctl net.ipv6.conf.all.forwarding=1
-ip netns exec n2 sysctl net.ipv6.conf.all.forwarding=1
+# remove "Time Exceeded" bit from icmp_ratemask
+ip netns exec n1 sysctl net.ipv6.conf.all.forwarding=1 net.ipv4.icmp_ratemask=4120 net.ipv6.icmp.ratemask=0-1,4-127
+ip netns exec n2 sysctl net.ipv6.conf.all.forwarding=1 net.ipv4.icmp_ratemask=4120 net.ipv6.icmp.ratemask=0-1,4-127
 ip netns exec n3 sysctl net.ipv6.conf.all.forwarding=1 net.ipv4.tcp_fastopen=3
 ip link add type veth
 ip link add type veth
@@ -77,10 +78,10 @@ systemd-run  --collect  --unit thehaproxy -p NetworkNamespacePath=/var/run/netns
 ip netns exec n2 ping -c 1 fd00:3::2 && ip netns exec n2 ping -c 1 fd00:1::2 && time nc -zv fd00:3::2 12346
 
 # test traceroute
-traceroute -T -O mss=12000,info 192.168.102.2 --port=12345 -n -q 1 | tee res
-traceroute -T -O mss=12000,info fd00:3::2 --port=12346 --max-hops=5 -n -q 1 | tee -a res
-traceroute 192.168.102.2 --mtu -O info -n -q 1| tee -a res
-traceroute fd00:3::2 --mtu -O info -n -q 1 | tee -a res
-traceroute -T -O ${fastopen}info 192.168.102.2 --port=5000 -n -q 1 | tee -a res
-traceroute -T -O ${fastopen}info fd00:3::2 --port=5000 -n -q 1| tee -a res
-sed -i 's/[0-9]*\.[0-9]* ms//g' res && diff expected res
+traceroute -T -O mss=12000,info 192.168.102.2 --port=12345 -n | tee res
+traceroute -T -O mss=12000,info fd00:3::2 --port=12346 --max-hops=5 -n | tee -a res
+traceroute 192.168.102.2 --mtu -O info -n | tee -a res
+traceroute fd00:3::2 --mtu -O info -n | tee -a res
+traceroute -T -O ${fastopen}info 192.168.102.2 --port=5000 -n | tee -a res
+traceroute -T -O ${fastopen}info fd00:3::2 --port=5000 -n | tee -a res
+sed -i 's/[0-9]*\.[0-9]* ms//g' res && diff -w expected res
