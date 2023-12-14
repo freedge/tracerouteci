@@ -1,11 +1,11 @@
 traceroute to 192.168.102.2 (192.168.102.2), 30 hops max, 60 byte packets
  1  192.168.100.2      
- 2  192.168.101.2      
- 3  192.168.102.2 <syn,ack>      
+ 2  192.168.101.2   M=8765    
+ 3  192.168.102.2 <syn,ack,mss=1460,sack,timestamps,window_scaling>      
 traceroute to fd00:3::2 (fd00:3::2), 5 hops max, 80 byte packets
  1  fd00:1::2      
- 2  fd00:2::2      
- 3  fd00:3::2 <syn,ack>      
+ 2  fd00:2::2   M=9999    
+ 3  fd00:3::2 <syn,ack,mss=1440,sack,timestamps,window_scaling>      
 traceroute to 192.168.102.2 (192.168.102.2), 30 hops max, 65000 byte packets
  1  192.168.100.2   F=1500    
  2  192.168.101.2   F=1400    
@@ -14,3 +14,11 @@ traceroute to fd00:3::2 (fd00:3::2), 30 hops max, 65000 byte packets
  1  fd00:1::2   F=1500    
  2  fd00:2::2   F=1400    
  3  fd00:3::2      
+traceroute to 192.168.102.2 (192.168.102.2), 30 hops max, 64 byte packets
+ 1  192.168.100.2      
+ 2  192.168.101.2      
+ 3  192.168.102.2 <syn,ack,mss=1460,sack,timestamps,window_scaling,fastopen>      
+traceroute to fd00:3::2 (fd00:3::2), 30 hops max, 84 byte packets
+ 1  fd00:1::2      
+ 2  fd00:2::2      
+ 3  fd00:3::2 <syn,ack,mss=1440,sack,timestamps,window_scaling,fastopen>      
