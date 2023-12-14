@@ -75,7 +75,9 @@ systemd-run  --collect  --unit thehaproxy -p NetworkNamespacePath=/var/run/netns
 
 # unfortunately it takes 2s to connect the first time, don't know why yet
 # TODO remove these pings
-ip netns exec n2 ping -c 1 fd00:3::2 && ip netns exec n2 ping -c 1 fd00:1::2 && time nc -zv fd00:3::2 12346
+ip netns exec n2 ping -c 1 fd00:3::2 && ip netns exec n2 ping -c 1 fd00:1::2
+until nc -zv 192.168.102.2 12345 ; do sleep 0.1 ; done
+until nc -zv fd00:3::2 12346 ; do sleep 0.1 ; done
 until nc -zv 192.168.102.2 5000 ; do sleep 0.1 ; done
 
 # test traceroute
