@@ -17,10 +17,10 @@ jobs:
     - name: Install deps
       run: "sudo sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list && sudo apt-get update && sudo apt-get build-dep traceroute && sudo apt-get install haproxy"
     - name: Get it
-      run: curl -L "http://sourceforge.net/projects/traceroute/best_release.json" | jq -r .release.url | xargs curl -L | tar --strip-components 1 -zxv -f -
+      run: mkdir tr && curl -L "http://sourceforge.net/projects/traceroute/best_release.json" | jq -r .release.url | xargs curl -L | tar --strip-components 1 -C tr -zxv -f -
     - name: Build it
-      run: echo "CFLAGS += -fprofile-arcs -ftest-coverage -g" >> Make.defines && echo "LDFLAGS += -fprofile-arcs -ftest-coverage -g" >> Make.defines && make
+      run: cd tr && echo "CFLAGS += -fprofile-arcs -ftest-coverage" >> Make.defines && echo "LDFLAGS += -fprofile-arcs -ftest-coverage" >> Make.defines && make
     - name: Test it maybe
-      run: sudo PATH=traceroute/:${PATH} bash test.sh
+      run: sudo PATH=tr/traceroute/:${PATH} bash test.sh
     - name: Report coverage
-      run: cd traceroute && (echo '```' && gcov -r mod-tcp.c ; echo '```') >> $GITHUB_STEP_SUMMARY
+      run: cd tr/traceroute && (echo '```' && gcov -r mod-tcp.c ; echo '```') >> $GITHUB_STEP_SUMMARY
