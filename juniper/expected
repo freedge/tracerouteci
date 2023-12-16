@@ -1,0 +1,4 @@
+traceroute to fd00::2 (fd00::2), 1 hops max, 80 byte packets
+ 1  fd00::2  
+traceroute to 192.168.80.2 (192.168.80.2), 1 hops max, 60 byte packets
+ 1  192.168.80.2 <INC:332,192.168.80.2,"ge-0/0/0.0",mtu=3691315200>  
