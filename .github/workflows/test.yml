@@ -19,8 +19,8 @@ jobs:
     - name: Get checksum
       id: checksum
       run: |
-        echo md5=$(jq -r .release.md5sum < best_release.json) >> $GITHUB_OUTPUT
-        echo url=$(jq -r .release.url < best_release.json) >> $GITHUB_OUTPUT
+        jq -r '"md5="+.release.md5sum' < best_release.json >> $GITHUB_OUTPUT
+        jq -r '"url="+.release.url' < best_release.json >> $GITHUB_OUTPUT
 
     - name: Cache packages
       uses: actions/cache@v3
