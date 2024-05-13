@@ -1,17 +1,71 @@
-From 610e2ebd8335b8e415ab2e9940dd9cf60b943d66 Mon Sep 17 00:00:00 2001
+From 2f2b100b4d4f61713f9b4e52e0547239c9c306cb Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Fran=C3=A7ois=20Rigault?= <rigault.francois@gmail.com>
 Date: Sun, 12 May 2024 04:09:48 +0200
 Subject: [PATCH] send payload with fastopen
 
 ---
- traceroute/mod-tcp.c | 36 ++++++++++++++++++++++++++++--------
- 1 file changed, 28 insertions(+), 8 deletions(-)
+ libsupp/clif.c       | 14 ++++++++++++++
+ libsupp/clif.h       |  1 +
+ traceroute/mod-tcp.c | 44 +++++++++++++++++++++++++++++++++-----------
+ 3 files changed, 48 insertions(+), 11 deletions(-)
 
+diff --git a/libsupp/clif.c b/libsupp/clif.c
+index 2c21326..0f4a21e 100644
+--- a/libsupp/clif.c
++++ b/libsupp/clif.c
+@@ -1190,6 +1190,16 @@ static int set_uint (unsigned int *data, char *arg) {
+ 	return  (q == arg || *q) ? -1 : 0;
+ }
+ 
++static int set_ulong (unsigned long *data, char *arg) {
++	char *q;
++
++	if (!data)  return -1;
++
++	*data = (unsigned long) strtoul (arg, &q, 0);
++
++	return  (q == arg || *q) ? -1 : 0;
++}
++
+ static int set_double (double *data, char *arg) {
+ 	char *q;
+ 
+@@ -1211,6 +1221,10 @@ int CLIF_set_uint (CLIF_option *optn, char *arg) {
+ 	return  set_uint (optn->data, arg);
+ }
+ 
++int CLIF_set_ulong (CLIF_option *optn, char *arg) {
++
++	return  set_ulong (optn->data, arg);
++}
+ int CLIF_set_double (CLIF_option *optn, char *arg) {
+ 
+ 	return  set_double (optn->data, arg);
+diff --git a/libsupp/clif.h b/libsupp/clif.h
+index 6b7f3f0..f5762c6 100644
+--- a/libsupp/clif.h
++++ b/libsupp/clif.h
+@@ -99,6 +99,7 @@ extern int CLIF_unset_flag (CLIF_option *optn, char *arg);
+ extern int CLIF_set_string (CLIF_option *optn, char *arg);
+ extern int CLIF_set_int (CLIF_option *optn, char *arg);
+ extern int CLIF_set_uint (CLIF_option *optn, char *arg);
++extern int CLIF_set_ulong (CLIF_option *optn, char *arg);
+ extern int CLIF_set_double (CLIF_option *optn, char *arg);
+ extern int CLIF_call_func (CLIF_option *optn, char *arg);
+ 
 diff --git a/traceroute/mod-tcp.c b/traceroute/mod-tcp.c
-index c8453bf..2410598 100644
+index c8453bf..476d88d 100644
 --- a/traceroute/mod-tcp.c
 +++ b/traceroute/mod-tcp.c
-@@ -93,8 +93,7 @@ static char *print_tcp_info (struct tcphdr *tcp, size_t len) {
+@@ -61,6 +61,7 @@ static int mss = -1;
+ static int check_mss = 0;
+ static int info = 0;
+ static int fastopen = 0;
++static uint64_t fo_cookie = 0;
+ 
+ #define FL_FLAGS	0x0100
+ #define FL_ECN		0x0200
+@@ -93,8 +94,7 @@ static char *print_tcp_info (struct tcphdr *tcp, size_t len) {
  	unsigned int flags;
  	uint8_t *ptr;
  
@@ -21,7 +75,65 @@ index c8453bf..2410598 100644
  	)  return NULL;
  
  
-@@ -437,18 +436,39 @@ static int tcp_init (const sockaddr_any *dest,
+@@ -114,7 +114,7 @@ static char *print_tcp_info (struct tcphdr *tcp, size_t len) {
+ 
+ 	while (len > 1) {
+ 	    int op = *ptr, oplen = ptr[1];
+-	    char buf[16];
++	    char buf[40];
+ 	    const char *name = NULL;
+ 
+ 	    switch (op) {
+@@ -130,7 +130,18 @@ static char *print_tcp_info (struct tcphdr *tcp, size_t len) {
+ 		case TCPOPT_SACK_PERMITTED:  if (oplen == TCPOLEN_SACK_PERMITTED)  name = "sack";  break;
+ 		case TCPOPT_TIMESTAMP:  if (oplen == TCPOLEN_TIMESTAMP)  name = "timestamps";  break;
+ 		case TCPOPT_WINDOW:  if (oplen == TCPOLEN_WINDOW)  name = "window_scaling";  break;
+-		case TCPOPT_FASTOPEN:  if (oplen >= TCPOLEN_FASTOPEN_BASE)  name = "fastopen";  break;
++		case TCPOPT_FASTOPEN:  
++		    if (oplen >= TCPOLEN_FASTOPEN_BASE)  {
++		    	if (oplen <= len && oplen == 10) {
++			   uint64_t hi = ntohl (*((uint32_t *) (ptr + 2)));
++			   uint64_t lo = ntohl (*((uint32_t *) (ptr + 6)));
++			   snprintf (buf, sizeof (buf), "fastopen=%lu", (((hi << 32)) | lo ));
++			   name = buf;
++		    	} else {
++		    	        name = "fastopen";  
++		    	}
++		    }
++                    break;
+ 	    }
+ 
+ 	    if (name) {
+@@ -191,6 +202,7 @@ static int set_mss (CLIF_option *optn, char *arg) {
+ 	return 0;
+ }
+ 
++
+ static CLIF_option tcp_options[] = {
+ 	{ 0, "syn", 0, "Set tcp flag SYN (default if no other "
+ 			"tcp flags specified)", set_tcp_flag, 0, 0, 0 },
+@@ -224,6 +236,8 @@ static CLIF_option tcp_options[] = {
+ 	{ 0, "mss", "NUM", "Use value of %s (or unchanged) for maxseg tcp option (when syn), "
+ 			"and discover its clamping along the path being traced",
+ 				set_mss, &mss, 0, CLIF_OPTARG },
++	{ 0, "cookie", "NUM", "Use value of %s (or unchanged) for fastopen cookie ",
++				CLIF_set_ulong, &fo_cookie, 0, CLIF_OPTARG },
+ 	{ 0, "info", 0, "Print tcp flags and options of final tcp replies "
+ 			"when target host is reached. Useful to determine whether "
+ 			"an application listens the port etc.",
+@@ -430,25 +444,33 @@ static int tcp_init (const sockaddr_any *dest,
+ 		*ptr++ = TCPOLEN_FASTOPEN_BASE + 2 * sizeof (uint32_t);
+ 		*((uint32_t *) ptr) = random_seq ();  ptr += sizeof (uint32_t);
+ 		*((uint32_t *) ptr) = random_seq ();  ptr += sizeof (uint32_t);
++	    } else if (fo_cookie) {
++		*ptr++ = TCPOLEN_FASTOPEN_BASE + 2 * sizeof (uint32_t);
++		*((uint32_t *) ptr) = htonl(fo_cookie >> 32);  ptr += sizeof (uint32_t);
++		*((uint32_t *) ptr) = htonl(fo_cookie & 0xffffffff);  ptr += sizeof (uint32_t);
+ 	    } else
+-		*ptr++ = TCPOLEN_FASTOPEN_BASE + 0;	/*  2   */
++	        *ptr++ = TCPOLEN_FASTOPEN_BASE + 0;     /*  2   */
+ 	    *ptr++ = TCPOPT_NOP;	/*  1   */
+ 	    *ptr++ = TCPOPT_NOP;	/*  1   */
  	}
  
  
@@ -39,24 +151,7 @@ index c8453bf..2410598 100644
  
 +	if (fastopen) {
 +		*ptr ++ = 'G'; // first letter of a get...
-+		*ptr ++ = 'E'; // first letter of a get...
-+		*ptr ++ = 'T'; // first letter of a get...
-+		*ptr ++ = ' '; // first letter of a get...
-+		*ptr ++ = '/'; // first letter of a get...
-+		*ptr ++ = ' '; // first letter of a get...
-+		*ptr ++ = 'H'; // first letter of a get...
-+		*ptr ++ = 'T'; // first letter of a get...
-+		*ptr ++ = 'T'; // first letter of a get...
-+		*ptr ++ = 'P'; // first letter of a get...
-+		*ptr ++ = '/'; // first letter of a get...
-+		*ptr ++ = '1'; // first letter of a get...
-+		*ptr ++ = '.'; // first letter of a get...
-+		*ptr ++ = '0'; // first letter of a get...
-+		*ptr ++ = '\r'; // first letter of a get...
-+		*ptr ++ = '\n'; // first letter of a get...
-+		*ptr ++ = '\r'; // first letter of a get...
-+		*ptr ++ = '\n'; // first letter of a get...
-+		len += 18;
++		len += 1;
 +	}
 +	*lenp = htons (len);
 +	csum_len = ptr - buf;
@@ -66,12 +161,12 @@ index c8453bf..2410598 100644
  	*packet_len_p = len;
  
  	return 0;
-@@ -507,7 +527,7 @@ static void tcp_send_probe (probe *pb, int ttl) {
+@@ -507,7 +529,7 @@ static void tcp_send_probe (probe *pb, int ttl) {
  
  	pb->send_time = get_time ();
  
 -	if (do_send (raw_sk, th, th->doff << 2, &dest_addr) < 0) {
-+	if (do_send (raw_sk, th, (fastopen? 18:0)+(th->doff << 2), &dest_addr) < 0) {
++	if (do_send (raw_sk, th, (fastopen? 1:0)+(th->doff << 2), &dest_addr) < 0) {
  	    close (sk);
  	    pb->send_time = 0;
  	    return;
