@@ -1,0 +1,33 @@
+From 2aaaa07b0d3fd7ca43aa006b962bde0b42178720 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fran=C3=A7ois=20Rigault?= <rigault.francois@gmail.com>
+Date: Thu, 16 May 2024 20:33:57 +0200
+Subject: [PATCH] inform when Palo Alto is tripping tcp fo cookie req
+
+---
+ traceroute/mod-tcp.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/traceroute/mod-tcp.c b/traceroute/mod-tcp.c
+index c8453bf..ed8e628 100644
+--- a/traceroute/mod-tcp.c
++++ b/traceroute/mod-tcp.c
+@@ -565,6 +565,16 @@ static probe *tcp_check_reply (int sk, int err, sockaddr_any *from,
+ 		}
+ 	    }
+ 	}
++	if (fastopen && len >= sizeof (*tcp) + 24) {
++	    uint8_t *ptr = (uint8_t *) (tcp +  1);
++	    ptr += 20;
++	    if (ptr[0] == TCPOPT_NOP  &&
++	        ptr[1] == TCPOPT_NOP  &&
++	        ptr[2] == TCPOPT_NOP  &&
++	        ptr[3] == TCPOPT_NOP) {
++		    put_err (pb, "FO=nop");
++	    }
++	}
+ 
+ 
+ 	if (!err) {
+-- 
+2.43.0
+
