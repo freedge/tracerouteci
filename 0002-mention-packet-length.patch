@@ -1,0 +1,50 @@
+From 78deed243f5451f9babb4f395a6b36e7be47961d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fran=C3=A7ois=20Rigault?= <rigault.francois@gmail.com>
+Date: Sun, 19 May 2024 10:40:38 +0200
+Subject: [PATCH 2/2] mention packet length
+
+---
+ traceroute/mod-tcp.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/traceroute/mod-tcp.c b/traceroute/mod-tcp.c
+index ed8e628..ae12737 100644
+--- a/traceroute/mod-tcp.c
++++ b/traceroute/mod-tcp.c
+@@ -551,6 +551,7 @@ static probe *tcp_check_reply (int sk, int err, sockaddr_any *from,
+ 	if (!pb)  return NULL;
+ 
+ 
++	int _info = 0;
+ 	if (check_mss &&
+ 	    err &&
+ 	    len >= sizeof (*tcp) + TCPOLEN_MAXSEG
+@@ -562,10 +563,11 @@ static probe *tcp_check_reply (int sk, int err, sockaddr_any *from,
+ 		if (mss != seen_mss) {
+ 		    put_err (pb, "M=%u", seen_mss);
+ 		    mss = seen_mss;	/*  print just once   */
++		    _info = 1;
+ 		}
+ 	    }
+ 	}
+-	if (fastopen && len >= sizeof (*tcp) + 24) {
++	if (fastopen && err && len >= sizeof (*tcp) + 24) {
+ 	    uint8_t *ptr = (uint8_t *) (tcp +  1);
+ 	    ptr += 20;
+ 	    if (ptr[0] == TCPOPT_NOP  &&
+@@ -573,8 +575,12 @@ static probe *tcp_check_reply (int sk, int err, sockaddr_any *from,
+ 	        ptr[2] == TCPOPT_NOP  &&
+ 	        ptr[3] == TCPOPT_NOP) {
+ 		    put_err (pb, "FO=nop");
++		    _info = 1;
+ 	    }
+ 	}
++	if (err && !_info) {
++	    put_err (pb, "<%ld", len);
++	}
+ 
+ 
+ 	if (!err) {
+-- 
+2.43.0
+

@@ -7,6 +7,7 @@ COPY traceroute.tgz /src/traceroute.tgz
 COPY *.patch /src/
 RUN mkdir tr && tar -C tr --strip-components 1 -zxv -f /src/traceroute.tgz
 RUN /usr/bin/patch -p1 -d tr < ./0001-inform-when-Palo-Alto-is-tripping-tcp-fo-cookie-req.patch
+RUN /usr/bin/patch -p1 -d tr < ./0002-mention-packet-length.patch
 RUN cd tr && make
 
 FROM quay.io/centos/centos:stream10-development-minimal
